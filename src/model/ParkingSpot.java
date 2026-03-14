@@ -33,17 +33,18 @@ public class ParkingSpot {
         return parkedVehicle;
     }
 
-    public void occupy(Vehicle vehicle) {
+    public synchronized boolean tryOccupy(Vehicle vehicle) {
         if (!isAvailable()) {
-            throw new IllegalStateException("Spot already occupied");
+            return false;
         }
         if (vehicle.getVehicleType() != spotType) {
             throw new IllegalArgumentException("Incompatible vehicle type for this spot");
         }
         this.parkedVehicle = vehicle;
+        return true;
     }
 
-    public Vehicle vacate() {
+    public synchronized Vehicle vacate() {
         Vehicle previous = this.parkedVehicle;
         this.parkedVehicle = null;
         return previous;

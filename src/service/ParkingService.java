@@ -1,6 +1,5 @@
 package service;
 
-import model.Floor;
 import model.ParkingLot;
 import model.ParkingSpot;
 import model.Ticket;
@@ -9,7 +8,7 @@ import model.Vehicle;
 import model.VehicleType;
 import strategy.ParkingStrategy;
 
-import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -22,7 +21,7 @@ public class ParkingService {
     private final ParkingStrategy parkingStrategy;
 
     // ticketId -> spot (vehicle is stored inside spot)
-    private final Map<String, ParkingSpot> ticketToSpot = new HashMap<>();
+    private final Map<String, ParkingSpot> ticketToSpot = new ConcurrentHashMap<>();
 
     public ParkingService(ParkingLot parkingLot, ParkingStrategy parkingStrategy) {
         this.parkingLot = Objects.requireNonNull(parkingLot);
@@ -35,7 +34,10 @@ public class ParkingService {
             return Optional.empty();
         }
 
-        parkingSpot.occupy(vehicle);
+        if (!parkingSpot.tryOccupy(vehicle)) {
+            // Spot got taken by another thread between selection and occupation
+            return Optional.empty();
+        }
         Ticket ticket = Ticket.create(parkingSpot, vehicle);
         ticketToSpot.put(ticket.getTicketId(), parkingSpot);
         return Optional.of(ticket);
