@@ -24,7 +24,7 @@ public class Main {
         System.out.println("Free slot count for CYCLE: " + parkingService.getFreeSlots(VehicleType.CYCLE));
     }
 
-    public static void main(String[] args) {//TIP Press <shortcut actionId="ShowIntentionActions"/> with your caret at the highlighted text
+    public static void main(String[] args) {
 
         //Create parking lot
         ParkingLot parkingLot = new ParkingLot(10, 10);
