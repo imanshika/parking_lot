@@ -1,46 +1,52 @@
 package model;
 
 public class ParkingSpot {
-    public int getFloorNumber() {
-        return floorNumber;
-    }
 
     private final int floorNumber;
     private final int spotNumber;
     private final VehicleType spotType;
-    private boolean isAvailable;
-    private Vehicle parkedVehicle;
+    private Vehicle parkedVehicle; // null => free
 
     public ParkingSpot(int floorNumber, int spotNumber, VehicleType spotType) {
         this.floorNumber = floorNumber;
         this.spotNumber = spotNumber;
         this.spotType = spotType;
-        this.parkedVehicle = null;
-        this.isAvailable = true;
+    }
+
+    public int getFloorNumber() {
+        return floorNumber;
     }
 
     public int getSpotNumber() {
         return spotNumber;
     }
 
-    public boolean isAvailable() {
-        return isAvailable;
-    }
-
     public VehicleType getSpotType() {
         return spotType;
     }
 
-    public void setAvailable(boolean available) {
-        isAvailable = available;
-    }
-
-    public void setParkedVehicle(Vehicle parkedVehicle) {
-        this.parkedVehicle = parkedVehicle;
+    public boolean isAvailable() {
+        return parkedVehicle == null;
     }
 
     public Vehicle getParkedVehicle() {
         return parkedVehicle;
+    }
+
+    public void occupy(Vehicle vehicle) {
+        if (!isAvailable()) {
+            throw new IllegalStateException("Spot already occupied");
+        }
+        if (vehicle.getVehicleType() != spotType) {
+            throw new IllegalArgumentException("Incompatible vehicle type for this spot");
+        }
+        this.parkedVehicle = vehicle;
+    }
+
+    public Vehicle vacate() {
+        Vehicle previous = this.parkedVehicle;
+        this.parkedVehicle = null;
+        return previous;
     }
 
     @Override

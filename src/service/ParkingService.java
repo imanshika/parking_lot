@@ -4,99 +4,76 @@ import model.Floor;
 import model.ParkingLot;
 import model.ParkingSpot;
 import model.Ticket;
+import model.UnparkResult;
 import model.Vehicle;
 import model.VehicleType;
 import strategy.ParkingStrategy;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class ParkingService {
 
     private final ParkingLot parkingLot;
     private final ParkingStrategy parkingStrategy;
-    private final Map<String, ParkingSpot> ticketSpotMap = new HashMap<>();
-    private final Map<String, Vehicle> ticketVehicleMap = new HashMap<>();
+
+    // ticketId -> spot (vehicle is stored inside spot)
+    private final Map<String, ParkingSpot> ticketToSpot = new HashMap<>();
 
     public ParkingService(ParkingLot parkingLot, ParkingStrategy parkingStrategy) {
-        this.parkingLot = parkingLot;
-        this.parkingStrategy = parkingStrategy;
+        this.parkingLot = Objects.requireNonNull(parkingLot);
+        this.parkingStrategy = Objects.requireNonNull(parkingStrategy);
     }
 
-    public Ticket parkVehicle(Vehicle vehicle) {
+    public Optional<Ticket> park(Vehicle vehicle) {
         ParkingSpot parkingSpot = parkingStrategy.findSpot(parkingLot, vehicle.getVehicleType());
         if (parkingSpot == null) {
-            return null;
+            return Optional.empty();
         }
 
-        parkingSpot.setParkedVehicle(vehicle);
-        parkingSpot.setAvailable(false);
-
+        parkingSpot.occupy(vehicle);
         Ticket ticket = Ticket.create(parkingSpot, vehicle);
-        ticketSpotMap.put(ticket.getTicketId(), parkingSpot);
-        ticketVehicleMap.put(ticket.getTicketId(), vehicle);
-
-        return ticket;
+        ticketToSpot.put(ticket.getTicketId(), parkingSpot);
+        return Optional.of(ticket);
     }
 
-    public void unparkVehicle(Ticket ticket) {
-        if (ticket == null) {
-            return;
+    public Optional<UnparkResult> unpark(String ticketId) {
+        ParkingSpot parkingSpot = ticketToSpot.remove(ticketId);
+        if (parkingSpot == null) {
+            return Optional.empty();
         }
 
-        ParkingSpot parkingSpot = ticketSpotMap.remove(ticket.getTicketId());
-        Vehicle vehicle = ticketVehicleMap.remove(ticket.getTicketId());
-
-        if (parkingSpot == null || vehicle == null) {
-            return;
+        Vehicle vehicle = parkingSpot.vacate();
+        if (vehicle == null) {
+            return Optional.empty();
         }
 
-        parkingSpot.setParkedVehicle(null);
-        parkingSpot.setAvailable(true);
-
+        return Optional.of(new UnparkResult(ticketId, parkingSpot, vehicle));
     }
 
-    public int getFreeSlotCount(VehicleType vehicleType){
-
-        int freeSlotCount = 0;
-
-        for (Floor floor : parkingLot.getFloors()) {
-            for (ParkingSpot parkingSpot : floor.getParkingSpotList()) {
-                if (parkingSpot.isAvailable() && parkingSpot.getSpotType() == vehicleType) {
-                    freeSlotCount++;
-                }
-            }
-        }
-        return freeSlotCount;
+    public long getFreeSlotCount(VehicleType vehicleType) {
+        return parkingLot.getFloors().stream()
+                .flatMap(floor -> floor.getParkingSpotList().stream())
+                .filter(spot -> spot.getSpotType() == vehicleType && spot.isAvailable())
+                .count();
     }
 
-    public List<ParkingSpot> getFreeSlots(VehicleType vehicleType){
-
-        List<ParkingSpot> freeSlots = new ArrayList<>();
-
-        for (Floor floor : parkingLot.getFloors()) {
-            for (ParkingSpot parkingSpot : floor.getParkingSpotList()) {
-                if (parkingSpot.isAvailable() && parkingSpot.getSpotType() == vehicleType) {
-                    freeSlots.add(parkingSpot);
-                }
-            }
-        }
-        return freeSlots;
+    public List<ParkingSpot> getFreeSlots(VehicleType vehicleType) {
+        return parkingLot.getFloors().stream()
+                .flatMap(floor -> floor.getParkingSpotList().stream())
+                .filter(spot -> spot.getSpotType() == vehicleType && spot.isAvailable())
+                .collect(Collectors.toUnmodifiableList());
     }
 
-    public List<ParkingSpot> getOccupiedSlots(VehicleType vehicleType){
-
-        List<ParkingSpot> occupiedSlots = new ArrayList<>();
-
-        for (Floor floor : parkingLot.getFloors()) {
-            for (ParkingSpot parkingSpot : floor.getParkingSpotList()) {
-                if (!parkingSpot.isAvailable() && parkingSpot.getSpotType() == vehicleType) {
-                    occupiedSlots.add(parkingSpot);
-                }
-            }
-        }
-        return occupiedSlots;
+    public List<ParkingSpot> getOccupiedSlots(VehicleType vehicleType) {
+        return parkingLot.getFloors().stream()
+                .flatMap(floor -> floor.getParkingSpotList().stream())
+                .filter(spot -> spot.getSpotType() == vehicleType && !spot.isAvailable())
+                .collect(Collectors.toUnmodifiableList());
     }
 }
+
